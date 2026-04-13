@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+langgraph>=0.2.35
+langchain>=0.3.0
+langchain-openai
+supabase
+pydantic>=2.9.2
+python-dotenv
+python-multipart
+httpx
+langchain-google-genai
+xhtml2pdf
+Jinja2
