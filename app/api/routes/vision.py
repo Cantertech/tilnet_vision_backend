@@ -128,8 +128,13 @@ async def generate_pdf(payload: dict):
         total_labor_cost = project.get("total_labor_cost", 0)
         transport = project.get("transport", 0)
         profit = project.get("profit", 0)
+        total_area = project.get("total_area_with_waste", 0)
+        
         subtotal = total_material_cost + total_labor_cost
         grand_total = subtotal + transport + profit
+        
+        # Calculate cost per area dynamically
+        calc_cost_per_area = grand_total / total_area if total_area > 0 else 0
 
         context = {
             "project_name": project.get("name"),
@@ -146,10 +151,10 @@ async def generate_pdf(payload: dict):
             "profit": profit,
             "subtotal_cost": subtotal,
             "grand_total": grand_total,
-            "total_area": project.get("total_area_with_waste", 0),
+            "total_area": total_area,
             "wastage_percentage": project.get("wastage_percentage", 10),
             "estimated_days": project.get("estimated_days", 3),
-            "cost_per_area": project.get("cost_per_area", 0),
+            "cost_per_area": calc_cost_per_area,
             "primary_color": profile.get("pdf_color", "#007bff"),
             "user_profile": {
                 "company_name": profile.get("company_name") or "Tilnet Contractor",
@@ -211,7 +216,6 @@ async def save_project(payload: dict):
             "customer_location": project_data.get("customer_location") or project_data.get("customer", {}).get("location"),
             "total_area_with_waste": project_data.get("total_area"),
             "total_labor_cost": total_labor,
-            "cost_per_area": project_data.get("cost_per_area"),
             "transport": project_data.get("transport", 0),
             "profit": project_data.get("profit", 0),
             "wastage_percentage": project_data.get("wastage_percentage", 10),
