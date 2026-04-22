@@ -49,7 +49,7 @@ class AgentState(TypedDict):
 # Initialize Models
 # Node 1: Vision Specialist (Gemini 1.5 Flash)
 vision_llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash", 
+    model="gemini-2.5-flash", 
     google_api_key=settings.GOOGLE_API_KEY
 )
 
@@ -65,7 +65,7 @@ def vision_extraction_node(state: AgentState):
     Extracts every piece of information visible in the image(s).
     Treats the image as a full project brief (Dimensions, Labor, Client, Materials).
     """
-    print("--- NODE 1: COMPREHENSIVE VISION EXTRACTION ---")
+    print(f"\n[AGENT] NODE 1: Starting Vision Extraction for Image: {state['image_url'][:60]}...")
     
     prompt = f"""
     You are a Senior Tiling & Construction Expert. 
@@ -92,6 +92,8 @@ def vision_extraction_node(state: AgentState):
     )
     
     response = vision_llm.invoke([message])
+    print(f"[AGENT] Extraction Complete. Length: {len(response.content)} characters.")
+    print(f"[AGENT] RAW EXTRACTION SNIPPET: {response.content[:200]}...")
     
     return {
         "raw_text": response.content,
@@ -104,7 +106,7 @@ def semantic_reasoning_node(state: AgentState):
     Parses the raw text into a strict JSON structure.
     Resolves shorthand (Kthn -> Kitchen) and interprets labor intent.
     """
-    print("--- NODE 2: ENTITY STRUCTURING ---")
+    print("[AGENT] NODE 2: Structuring Raw Text into JSON Entities...")
     
     prompt = f"""
     You are a data architect. Convert the raw notes below into a valid JSON object.
@@ -147,36 +149,52 @@ def semantic_reasoning_node(state: AgentState):
     """
     
     response = reasoning_llm.invoke(prompt)
+    print(f"[AGENT] Node 2: Raw AI Reasoner Output: {response.content[:300]}...")
     
     import json
     import re
     
+    # Initialize defaults
+    data = {} 
+    
     try:
-        json_match = re.search(r'{{.*}}', response.content, re.DOTALL)
-        # Using a more robust match for the outermost braces
-        json_str = response.content[response.content.find('{'):response.content.rfind('}')+1]
-        data = json.loads(json_str)
+        # Robustly extract JSON from the AI response
+        content = response.content
+        start_idx = content.find('{')
+        end_idx = content.rfind('}')
+        
+        if start_idx != -1 and end_idx != -1:
+            json_str = content[start_idx:end_idx+1]
+            data = json.loads(json_str)
+        else:
+            print("[AGENT] Warning: AI did not return a valid JSON block.")
+            data = {}
+
+        print(f"[AGENT] Structuring Complete: Found {len(data.get('rooms', []))} rooms.")
         
         return {
-            "project_name": data.get("project_name", "New Estimate"),
+            "project_name": data.get("project_name", state.get("project_name", "New Estimate")),
             "rooms": data.get("rooms", []),
             "customer": data.get("customer", {}),
             "labor": data.get("labor", {}),
-            "workers_extracted": data.get("workers", []), # Store extracted worker list
+            "workers_extracted": data.get("workers", []),
             "materials_pref": data.get("materials", []),
             "site_notes": data.get("notes", []),
             "status": "fully_structured"
         }
     except Exception as e:
-        print(f"Error parsing entity JSON: {e}")
-        return {"status": "structure_failed", "validation_errors": [str(e)]}
+        print(f"Error parsing entity JSON: {str(e)}")
+        return {
+            "status": "structure_failed", 
+            "validation_errors": [f"JSON Parse Error: {str(e)}"]
+        }
 
 # --- NODE 3: VALIDATION & SANITY CHECKS ---
 def validation_node(state: AgentState):
     """
     Performs critical sanity checks to prevent 'Hallucination' math.
     """
-    print("--- NODE 3: VALIDATION ---")
+    print("[AGENT] NODE 3: Validating Dimensions and Sanity Checks...")
     errors = []
     
     rooms = state.get("rooms", [])
@@ -203,6 +221,9 @@ def validation_node(state: AgentState):
     if labor.get("fixed_total", 0) < 0:
         errors.append("Negative labor charge detected.")
 
+    print(f"[AGENT] Validation Results: {len(errors)} errors found.")
+    if errors:
+        print(f"[AGENT] VALIDATION WARNINGS: {errors}")
     status = "validated" if not errors else "validation_warning"
     
     return {
@@ -219,7 +240,7 @@ def calculation_node(state: AgentState):
     """
     Invokes the core Python CalculationService using normalized AI data.
     """
-    print("--- NODE 4: CALCULATION ---")
+    print("[AGENT] NODE 4: Running Math Engine & Calculation Service...")
     service = CalculationService()
     
     # 1. Map AI Rooms to Schemas
@@ -270,6 +291,7 @@ def calculation_node(state: AgentState):
     
     # Note: calculate_project returns (processed_rooms, results)
     processed_rooms, results = service.calculate_project(calc_input, user_materials=user_materials)
+    print(f"[AGENT] NODE 4: MATH SUCCESS. Total Area: {results.total_area_with_waste} | Labor: {results.total_labor_cost}")
     
     return {
         "calculated_results": {
@@ -280,14 +302,14 @@ def calculation_node(state: AgentState):
         "status": "calculated"
     }
 
-from app.core.supabase import supabase
+from app.core.supabase import supabase, supabase_admin
 
 # --- NODE 5: PERSISTENCE (THE COMMITTER) ---
 def persistence_node(state: AgentState):
     """
     Saves the final calculated project to Supabase.
     """
-    print("--- NODE 5: PERSISTENCE ---")
+    print(f"[AGENT] NODE 5: Persisting Project '{state.get('project_name', 'Unnamed Project')}' to Supabase...")
     
     # 1. Save Main Project
     results = state.get("calculated_results", {})
@@ -307,8 +329,8 @@ def persistence_node(state: AgentState):
     }
 
     try:
-        # Insert Project
-        proj_res = supabase.table("projects").insert(project_payload).execute()
+        # Insert Project using Admin client to bypass RLS
+        proj_res = supabase_admin.table("projects").insert(project_payload).execute()
         project_id = proj_res.data[0]["id"]
         print(f"Project saved with ID: {project_id}")
 
@@ -323,7 +345,7 @@ def persistence_node(state: AgentState):
                 "area": r.get("area")
             })
         if rooms_payload:
-            supabase.table("rooms").insert(rooms_payload).execute()
+            supabase_admin.table("rooms").insert(rooms_payload).execute()
 
         # 3. Save Materials
         mats_payload = []
@@ -336,7 +358,7 @@ def persistence_node(state: AgentState):
                 "price": m.get("price")
             })
         if mats_payload:
-            supabase.table("project_materials").insert(mats_payload).execute()
+            supabase_admin.table("project_materials").insert(mats_payload).execute()
 
         return {"status": "fully_persisted"}
         

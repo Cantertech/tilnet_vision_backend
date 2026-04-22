@@ -6,7 +6,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from jinja2 import Environment, FileSystemLoader
 from xhtml2pdf import pisa
 from app.agents.vision_agent import vision_graph
-from app.core.supabase import supabase
+from app.core.supabase import supabase, supabase_admin
 
 router = APIRouter()
 
@@ -34,20 +34,24 @@ async def process_estimate(
     """
     Endpoint to receive an image and run the LangGraph Vision Agent.
     """
+    print(f"\n[API] Received Scan Request: project_type={project_type}, unit={unit}, user_id={user_id}")
     try:
         # 1. Store file in Supabase Storage
-        file_path = f"{user_id}/{file.filename}"
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        file_path = f"{user_id}/{timestamp}_{file.filename}"
         file_content = await file.read()
+        print(f"[API] Uploading image to storage: {file_path}...")
         
-        # Upload
-        supabase.storage.from_("scans").upload(
+        # Upload using Admin client with upsert enabled
+        supabase_admin.storage.from_("scans").upload(
             path=file_path,
             file=file_content,
-            file_options={"content-type": file.content_type}
+            file_options={"content-type": file.content_type, "upsert": "true"}
         )
         
-        # Get Public URL (Ensure the bucket 'scans' is public)
-        image_url = supabase.storage.from_("scans").get_public_url(file_path)
+        # Get Public URL
+        image_url = supabase_admin.storage.from_("scans").get_public_url(file_path)
+        print(f"[API] Image live at: {image_url}")
         
         # 2. Run the Agent
         initial_state = {
@@ -55,17 +59,27 @@ async def process_estimate(
             "project_type": project_type,
             "unit": unit,
             "user_id": user_id,
+            "project_name": "New Estimate",
+            "raw_text": "",
+            "date": datetime.now().strftime("%Y-%m-%d"),
             "status": "idle",
             "rooms": [],
             "customer": {},
             "labor": {},
+            "workers_extracted": [],
             "materials_pref": [],
             "site_notes": [],
-            "validation_errors": []
+            "validation_errors": [],
+            "calculated_results": None,
+            "processed_rooms": []
         }
         
+        print(f"[API] Invoking AI Agent Graph...")
+        start_time = datetime.now()
         # Invoke the graph
         final_state = vision_graph.invoke(initial_state)
+        duration = (datetime.now() - start_time).total_seconds()
+        print(f"[API] Agent Processing Finished in {duration:.2f}s. Final Status: {final_state.get('status', 'unknown')}")
         
         return {
             "success": True,
@@ -208,9 +222,9 @@ async def save_project(payload: dict):
         # Check if project already exists (if we have an ID)
         p_id = payload.get("project_id")
         if p_id:
-            res = supabase.from_("projects").update(project_insert).eq("id", p_id).execute()
+            res = supabase_admin.from_("projects").update(project_insert).eq("id", p_id).execute()
         else:
-            res = supabase.from_("projects").insert(project_insert).execute()
+            res = supabase_admin.from_("projects").insert(project_insert).execute()
         
         if not res.data:
             raise Exception("Failed to save project header")
@@ -220,7 +234,7 @@ async def save_project(payload: dict):
         # 2. Save Rooms
         if rooms:
             if p_id:
-                supabase.from_("rooms").delete().eq("project_id", p_id).execute()
+                supabase_admin.from_("rooms").delete().eq("project_id", p_id).execute()
             
             room_inserts = []
             for r in rooms:
@@ -231,12 +245,12 @@ async def save_project(payload: dict):
                     "breadth": r.get("breadth"),
                     "area": r.get("area")
                 })
-            supabase.from_("rooms").insert(room_inserts).execute()
+            supabase_admin.from_("rooms").insert(room_inserts).execute()
 
         # 3. Save Materials
         if materials:
             if p_id:
-                supabase.from_("project_materials").delete().eq("project_id", p_id).execute()
+                supabase_admin.from_("project_materials").delete().eq("project_id", p_id).execute()
             
             mat_inserts = []
             for m in materials:
@@ -247,7 +261,7 @@ async def save_project(payload: dict):
                     "unit": m.get("unit"),
                     "price": m.get("price")
                 })
-            supabase.from_("project_materials").insert(mat_inserts).execute()
+            supabase_admin.from_("project_materials").insert(mat_inserts).execute()
 
         return {
             "success": True,

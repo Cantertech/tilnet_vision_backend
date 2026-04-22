@@ -27,6 +27,16 @@ COVERAGE_RATES = {
     }
 }
 
+MATERIAL_PRICES = {
+    'cement': Decimal('95'),
+    'sand': Decimal('350'),
+    'tile cement': Decimal('65'),
+    'chemical': Decimal('55'),
+    'grout': Decimal('15'),
+    'rough sand': Decimal('280'),
+    'grouting cement': Decimal('12')
+}
+
 ROLE_SPEEDS = {
     'master': {'floor': Decimal('30'), 'wall': Decimal('20')},
     'labourer': {'floor': Decimal('0'), 'wall': Decimal('0')},
@@ -147,7 +157,9 @@ class CalculationService:
 
         # Add remaining calculated materials that weren't in user notes
         for m in materials_dict.values():
-            final_materials.append({**m.model_dump(), "price": Decimal('0')})
+            name_lower = m.name.lower()
+            default_price = MATERIAL_PRICES.get(name_lower, Decimal('0'))
+            final_materials.append({**m.model_dump(), "price": default_price})
 
         # 3. Estimated Days & Labor
         total_f_speed, total_w_speed = Decimal('0'), Decimal('0')
