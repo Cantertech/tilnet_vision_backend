@@ -11,3 +11,4 @@ httpx
 langchain-google-genai
 xhtml2pdf
 Jinja2
+pydantic-settings
