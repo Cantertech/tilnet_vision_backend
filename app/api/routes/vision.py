@@ -216,6 +216,7 @@ async def save_project(payload: dict):
             "customer_location": project_data.get("customer_location") or project_data.get("customer", {}).get("location"),
             "total_area_with_waste": project_data.get("total_area"),
             "total_labor_cost": total_labor,
+            "cost_per_area": project_data.get("cost_per_area"),
             "transport": project_data.get("transport", 0),
             "profit": project_data.get("profit", 0),
             "wastage_percentage": project_data.get("wastage_percentage", 10),
