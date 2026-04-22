@@ -85,6 +85,7 @@ async def process_estimate(
             "success": True,
             "data": {
                 "project_name": final_state.get("project_name"),
+                "project_type": final_state.get("project_type"),
                 "date": final_state.get("date"),
                 "customer": final_state.get("customer"),
                 "results": final_state.get("calculated_results")
@@ -211,6 +212,7 @@ async def save_project(payload: dict):
         project_insert = {
             "user_id": user_id,
             "name": project_data.get("project_name", "New Project"),
+            "project_type": project_data.get("project_type", "tiling"),
             "customer_name": project_data.get("customer_name") or project_data.get("customer", {}).get("name"),
             "customer_phone": project_data.get("customer_phone") or project_data.get("customer", {}).get("phone"),
             "customer_location": project_data.get("customer_location") or project_data.get("customer", {}).get("location"),
