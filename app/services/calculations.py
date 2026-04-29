@@ -60,7 +60,7 @@ class CalculationService:
         if qty >= 1: return qty.quantize(Decimal('1.01')), "wheelbarrow"
         return (qty * Decimal('8')).quantize(Decimal('1.01')), "headpan"
 
-    def calculate_project(self, data: ProjectCreate, user_materials: List[dict] = None) -> Tuple[List[RoomResponse], ProjectCalculationResults]:
+    def calculate_project(self, data: ProjectCreate, user_materials: List[dict] = None, override_days: int = None) -> Tuple[List[RoomResponse], ProjectCalculationResults]:
         processed_rooms = []
         total_f_w, total_w_w = Decimal('0'), Decimal('0')
         total_f, total_w = Decimal('0'), Decimal('0')
@@ -170,7 +170,7 @@ class CalculationService:
 
         f_days = (total_f / total_f_speed) if total_f_speed > 0 else Decimal('0')
         w_days = (total_w / total_w_speed) if total_w_speed > 0 else Decimal('0')
-        est_days = math.ceil(f_days + w_days)
+        est_days = override_days if (override_days and override_days > 0) else math.ceil(f_days + w_days)
 
         labor_cost = Decimal('0')
         for worker in data.workers:

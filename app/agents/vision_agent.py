@@ -36,7 +36,8 @@ class AgentState(TypedDict):
     labor: dict
     materials_pref: List[str]
     site_notes: List[str]
-    workers_extracted: List[dict] # Added to match Node 2 output
+    workers_extracted: List[dict]
+    estimated_days: int # Added for AI-driven duration
     
     # Process metadata
     status: str
@@ -135,6 +136,7 @@ def semantic_reasoning_node(state: AgentState):
             "rate_type": "daily"
         }}],
         "materials": [{{ "name": "...", "qty": 0, "price": 0, "is_system": true }}],
+        "estimated_days": 0,
         "notes": []
     }}
     
@@ -179,6 +181,7 @@ def semantic_reasoning_node(state: AgentState):
             "labor": data.get("labor", {}),
             "workers_extracted": data.get("workers", []),
             "materials_pref": data.get("materials", []),
+            "estimated_days": data.get("estimated_days", 0),
             "site_notes": data.get("notes", []),
             "status": "fully_structured"
         }
@@ -290,7 +293,11 @@ def calculation_node(state: AgentState):
     user_materials = state.get("materials_pref", [])
     
     # Note: calculate_project returns (processed_rooms, results)
-    processed_rooms, results = service.calculate_project(calc_input, user_materials=user_materials)
+    processed_rooms, results = service.calculate_project(
+        calc_input, 
+        user_materials=user_materials,
+        override_days=state.get("estimated_days")
+    )
     print(f"[AGENT] NODE 4: MATH SUCCESS. Total Area: {results.total_area_with_waste} | Labor: {results.total_labor_cost}")
     
     return {
