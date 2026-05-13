@@ -1,0 +1,22 @@
+name: Backend Keep Alive Ping
+
+on:
+  schedule:
+    # Runs every 10 minutes (cron is in UTC)
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows manual triggering from GitHub UI
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render Backend
+        run: |
+          echo "Pinging Tilnet Vision Backend to prevent Render spin-down..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://tilnet-vision-backend.onrender.com/)
+          echo "HTTP Response Code: $response"
+          if [ "$response" -eq 200 ]; then
+            echo "Success: Backend is awake and active!"
+          else
+            echo "Warning: Received unexpected response code $response"
+          fi
