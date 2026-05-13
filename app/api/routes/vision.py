@@ -308,7 +308,6 @@ async def generate_pdf(payload: dict):
         import io
         import base64
         from jinja2 import Environment, FileSystemLoader
-        from weasyprint import HTML
         import os
 
         template_path = os.path.join(os.getcwd(), "app", "templates")
