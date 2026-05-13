@@ -326,7 +326,20 @@ async def generate_pdf(payload: dict):
         html_content = template.render(context)
 
         # Generate PDF bytes
-        pdf_bytes = HTML(string=html_content).write_pdf()
+        try:
+            # Try WeasyPrint (performs best if local system dependencies like Pango/Cairo are present)
+            from weasyprint import HTML
+            pdf_bytes = HTML(string=html_content).write_pdf()
+        except Exception as weasy_err:
+            # Robust fallback to xhtml2pdf (works 100% on Render's bare Ubuntu environments without system libraries)
+            print(f"WeasyPrint failed or missing system libraries in this environment: {weasy_err}")
+            print("Falling back to pure-Python xhtml2pdf...")
+            from xhtml2pdf import pisa
+            pdf_buffer = io.BytesIO()
+            pisa_status = pisa.CreatePDF(io.StringIO(html_content), dest=pdf_buffer)
+            if pisa_status.err:
+                raise Exception(f"PDF compilation failed on both WeasyPrint and xhtml2pdf fallback. WeasyPrint error: {weasy_err}")
+            pdf_bytes = pdf_buffer.getvalue()
 
         # Convert to Base64
         pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
