@@ -1,646 +1,429 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <title>Estimate - {{ estimate_number|default("[Estimate Number]") }}</title>
+    <meta charset="utf-8">
     <style>
-        /* Define a CSS variable for the primary color */
-        :root {
-            --primary-color: {{ primary_color|default("#007bff") }};
-            --secondary-color: #e9ecef; /* Light grey for table stripes/borders */
-        }
-
         body {
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding-left: 5mm;
-            padding-right: 5mm;
-            padding-top: 15mm;
-            padding-bottom: 15mm;
-            line-height: 1.3;
-            color: #333;
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 10pt;
+            line-height: 1.4;
+            color: #2d3748;
             background-color: #ffffff;
+            margin: 0;
+            padding: 10px;
         }
-
-        .container {
+        /* Top Header Table */
+        .header-table {
             width: 100%;
-            margin: 0 auto;
+            border-bottom: 3px solid #3182ce;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
         }
-
-        .section {
-            margin-bottom: 6px; /* Tightened gap between sections */
-            padding: 0;
-            border: none;
-            background-color: #fff;
-        }
-
-        .section-content {
-            padding: 6px 10px; /* Compact padding inside sections */
-            border: 1px solid var(--secondary-color);
-            border-radius: 5px;
-        }
-
-        .header-section {
-            margin-bottom: 20px;
-            /* Reduced space below header */
-        }
-
-        .header-content,
-        .info-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            flex-wrap: wrap;
-            padding-bottom: 10px;
-            /* Reduced space below content under border */
-            border-bottom: 2px solid var(--primary-color);
-            /* Blue underline */
-        }
-
-        .header-left,
-        .header-right,
-        .info-left,
-        .info-right {
-            flex: 1;
-            min-width: 180px;
-            /* Further adjusted minimum width */
-            margin-right: 20px;
-            /* Reduced space between columns */
-        }
-
-        .header-right,
-        .info-right {
-            margin-right: 0;
-            text-align: right;
-        }
-
-        .logo {
-            max-width: 100px;
-            /* Adjusted logo size slightly */
-            height: auto;
-            margin-bottom: 5px;
-        }
-
-        .powered-by {
-            font-size: 9px;
-            /* Smaller font */
-            color: #777;
-            margin-top: 2px;
-            margin-bottom: 10px;
-            /* Reduced margin */
-            text-align: left;
-        }
-
-        h1 {
-            color: var(--primary-color);
-            font-size: 28px;
-            /* Adjusted heading size */
-            margin-top: 0;
-            margin-bottom: 5px;
+        .company-title {
+            font-size: 22pt;
             font-weight: bold;
+            color: #2b6cb0;
+            margin-bottom: 4px;
+        }
+        .powered-tag {
+            font-size: 8pt;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .doc-title {
+            font-size: 28pt;
+            font-weight: bold;
+            color: #3182ce;
+            text-align: right;
             text-transform: uppercase;
         }
-
-        h2 {
-            color: #333;
-            font-size: 18px;
-            /* Adjusted subheading size */
-            border-bottom: 1px solid var(--secondary-color);
-            padding-bottom: 5px;
-            /* Reduced padding */
-            margin-bottom: 10px;
-            /* Reduced margin */
-            margin-top: 0;
+        .meta-text {
+            font-size: 10pt;
+            color: #4a5568;
+            text-align: right;
+            margin-top: 4px;
+        }
+        /* Side-by-Side Bill To & From Table */
+        .section-table {
+            width: 100%;
+            margin-bottom: 30px;
+        }
+        .box-title {
+            font-size: 14pt;
             font-weight: bold;
+            color: #2d3748;
+            border-bottom: 2px solid #cbd5e0;
+            padding-bottom: 6px;
+            margin-bottom: 12px;
         }
-
-        h3 {
-            font-size: 16px;
-            /* Adjusted h3 size */
-            margin-bottom: 8px;
-            /* Reduced margin */
-            color: var(--primary-color);
+        .info-cell {
+            vertical-align: top;
+            padding: 15px;
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            width: 48%;
         }
-
-        .info-pair {
-            margin-bottom: 5px;
-            /* Reduced space between info pairs */
-            font-size: 14px;
-            /* Adjusted font size */
-            color: #555;
+        .spacer-cell {
+            width: 4%;
         }
-
-        .label {
+        .info-line {
+            margin-bottom: 6px;
+            font-size: 10pt;
+            color: #4a5568;
+        }
+        .info-label {
             font-weight: bold;
+            color: #2d3748;
             display: inline-block;
-            min-width: 120px;
-            /* Adjusted label width for alignment */
-            color: #333;
-            margin-right: 5px;
-            /* Reduced space after label */
+            width: 80px;
         }
-
-        .table {
+        /* Description Box */
+        .desc-box {
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .desc-title {
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 6px;
+            font-size: 11pt;
+        }
+        /* Grid Tables */
+        .table-container {
+            margin-bottom: 30px;
+        }
+        .grid-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 6px; /* Tightened space below tables */
         }
-
-        .table th,
-        .table td {
-            border: 1px solid var(--secondary-color);
-            padding: 4px 6px; /* Reduced cell heights and spacing */
-            text-align: left;
-            font-size: 13px;
-            /* Adjusted font size */
-        }
-
-        .table th {
-            background-color: var(--primary-color);
-            color: #fff;
+        .grid-table th {
+            background-color: #3182ce;
+            color: #ffffff;
             font-weight: bold;
-            text-align: center;
+            text-align: left;
+            padding: 10px 12px;
+            font-size: 10pt;
             text-transform: uppercase;
+            border: 1px solid #3182ce;
         }
-
-        .table td {
-            text-align: center;
+        .grid-table td {
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            font-size: 10pt;
+            color: #2d3748;
         }
-
-        .table tbody tr:nth-child(even) {
-            background-color: #f8f8f8;
+        .grid-table tr:nth-child(even) {
+            background-color: #f7fafc;
         }
-
-        .table tfoot td {
+        .grid-table tfoot td {
             font-weight: bold;
-            background-color: #eee;
-            text-align: right;
+            background-color: #edf2f7;
+            color: #2d3748;
+            border: 1px solid #cbd5e0;
         }
-
-        .table tfoot td:last-child {
-            text-align: center;
+        /* Estimate Summary Box */
+        .summary-box {
+            background-color: #ebf8ff;
+            border: 2px solid #bee3f8;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 35px;
         }
-
-        .room-detail-section,
-        .worker-detail-section {
-            margin-top: 8px;
-            /* Reduced margin */
-            padding-top: 8px;
-            /* Reduced padding */
-            border-top: 1px dashed #ccc;
-            font-size: 12px;
-            /* Smaller font */
-            color: #666;
-            text-align: left;
-            line-height: 1.3;
-            /* Reduced line height */
+        .summary-table {
+            width: 100%;
         }
-
-        .room-detail-section h4,
-        .worker-detail-section h4 {
-            margin-bottom: 3px;
-            /* Reduced margin */
-            color: #333;
-            font-size: 14px;
-            /* Adjusted font size */
+        .summary-table td {
+            padding: 8px 10px;
+            font-size: 11pt;
+            color: #2d3748;
         }
-
-        .summary-totals {
-            margin-top: 15px;
-            /* Reduced margin */
-            border-top: 2px solid var(--secondary-color);
+        .grand-total {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #2b6cb0;
+            border-top: 2px solid #3182ce;
             padding-top: 12px;
-            /* Reduced padding */
         }
-
-        .summary-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 6px;
-            /* Reduced margin */
-            font-size: 15px;
-            /* Adjusted font size */
+        /* Signatures */
+        .signature-table {
+            width: 100%;
+            margin-top: 40px;
+            margin-bottom: 40px;
         }
-
-        .summary-row .summary-label {
-            font-weight: bold;
-            color: #555;
-        }
-
-        .summary-row .summary-value {
-            font-weight: normal;
-            color: #333;
-        }
-
-        .grand-total-row {
-            margin-top: 10px;
-            /* Reduced margin */
-            padding-top: 10px;
-            /* Reduced padding */
-            border-top: 2px solid var(--primary-color);
-            font-size: 20px;
-            /* Adjusted font size */
-            font-weight: bold;
-            color: var(--primary-color);
-        }
-
-        .grand-total-row .summary-value {
-            font-weight: bold;
-            color: var(--primary-color);
-        }
-
-
-        .signature-section {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 30px;
-            /* Reduced margin */
-            padding-top: 15px;
-            /* Reduced padding */
-            border-top: 1px solid var(--secondary-color);
-            flex-wrap: wrap;
-        }
-
-        .logo-text-placeholder {
-            font-size: 25px;
-            /* Adjust size as needed */
-            font-weight: bold;
-            color: #0015ff;
-            /* Darker text */
-            margin-bottom: 10px;
-            /* Space below the text */
-            /* Match the dimensions of the logo container roughly for layout consistency */
-            width: 150px;
-            height: 50px;
-            display: flex;
-            /* Use flexbox to center text vertically */
-            justify-content: center;
-            /* Center text horizontally */
-            align-items: center;
-            /* Center text vertically */
+        .sig-box {
             text-align: center;
-            /* Ensure text is centered if it wraps */
+            vertical-align: bottom;
+            width: 45%;
         }
-
-        .signature-box {
-            flex: 1;
-            text-align: center;
-            margin: 0 15px;
-            /* Reduced margin */
-            min-width: 180px;
-            /* Adjusted min-width */
+        .sig-line {
+            border-top: 1px solid #4a5568;
+            width: 240px;
+            margin: 0 auto;
+            padding-top: 6px;
+            font-size: 10pt;
+            color: #718096;
+            font-weight: bold;
         }
-
-        .signature-line {
-            display: block;
-            width: 80%;
-            margin: 15px auto 5px auto;
-            /* Reduced margin */
-            border-bottom: 1px solid #000;
+        /* Terms & Footer */
+        .terms-box {
+            background-color: #f7fafc;
+            border-left: 4px solid #3182ce;
+            padding: 15px;
+            font-size: 9pt;
+            color: #4a5568;
+            margin-bottom: 25px;
         }
-
-        .terms {
-            margin-top: 20px;
-            /* Reduced margin */
-            font-size: 11px;
-            /* Smaller font */
-            color: #555;
-        }
-
-        .terms h4 {
+        .terms-title {
+            font-weight: bold;
+            font-size: 11pt;
+            color: #2d3748;
             margin-bottom: 8px;
-            /* Reduced margin */
-            color: #333;
-            font-size: 15px;
-            /* Adjusted font size */
         }
-
-        .terms p {
-            margin-bottom: 3px;
-            /* Reduced margin */
-        }
-
-        .footer-section {
+        .footer-bar {
             text-align: center;
-            font-size: 11px;
-            /* Smaller font */
-            color: #777;
-            margin-top: 20px;
-            /* Reduced margin */
-            border-top: 1px solid var(--secondary-color);
-            padding-top: 8px;
-            /* Reduced padding */
-        }
-
-        /* Page breaks for printing */
-        @media print {
-            .section {
-                page-break-inside: avoid;
-            }
-
-            .table {
-                page-break-inside: auto;
-            }
-
-            .summary-totals {
-                page-break-before: avoid;
-            }
+            font-size: 9pt;
+            color: #a0aec0;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 15px;
+            margin-top: 40px;
         }
     </style>
 </head>
-
 <body>
-    <div class="container">
 
-        <div class="section header-section">
-            <div class="header-content">
-                <div class="header-left">
-                    {# --- Logo or Name Display --- #}
-                    {% if logo_url %}
-                    {# Display the logo image if URL is provided #}
-                    <img src="{{ logo_url }}" alt="Company Logo" class="logo">
-                    {% elif user_profile.company_name %}
-                    {# If no logo, display the Company Name + Ventures as an H1 if available #}
-                    <h2 class="color:'blue'">
-                        {{ user_profile.company_name }}
-                    </h2>
-                    {% elif user_profile.representative_name %}
-                    {# If no logo or company name, display the Representative Name + Ventures as an H1 if available #}
-                    <h2 class="color:'blue'">
-                        {{ user_profile.representative_name }} Ventures
-                    </h2>
-                    {% elif customer_name %} {# Less likely for sender branding, but included based on previous logic #}
-                    {# If no logo, company name, or rep name, use customer name + Ventures as an H1 #}
-                    <h2 class="color:'blue'">
-                        {{ customer_name }} Ventures
-                    </h2>
-                    {% else %}
-                    {# Fallback if no logo, company name, representative name, or customer name is available #}
-                    <h2 class="color:'blue'">
-                        [ Your Business Name ] {# Changed placeholder text #}
-                    </h2>
-                    {% endif %}
-                    {# --- End Logo or Name Display --- #}
-
-                    <p class="powered-by">Powered by TileNet</p>
-                </div>
-                <div class="header-right">
-                    <h1>Estimate</h1>
-                    {# Assuming user_profile is passed and has these attributes #}
-                    <p class="info-pair"><span class="label">Estimate No:</span> {{ estimate_number|default("[Estimate
-                        Number]") }}</p>
-                    <p class="info-pair"><span class="label">Date:</span> {{ project_date|default("[Date]") }}</p> {#
-                    Format the date #}
-                    <p class="info-pair"><span class="label">Project Name:</span> {{ project_name|default("[Project
-                        Name]") }}</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="section info-section">
-            <div class="section-content"> {# Added inner content wrapper for padding/border #}
-                <div class="info-content">
-                    <div class="info-left">
-                        <h2>Bill To</h2>
-                        {# Use customer info from context_data, which prioritizes payload data #}
-                        <p class="info-pair"><span class="label">Name:</span> {{ customer_name|default("[Client Name]")
-                            }}</p>
-                        <p class="info-pair"><span class="label">Location:</span> {{ location|default("[Client
-                            Location]") }}</p>
-                        <p class="info-pair"><span class="label">Phone:</span> {{ contact|default("[Client Contact]") }}
-                        </p>
-                    </div>
-                    <div class="info-right">
-                        <h2>From</h2> {# Label for your company info #}
-                        <p class="info-pair"><span class="label">Company:</span> {{
-                            user_profile.company_name|default("[Company Name]") }}</p>
-                        <p class="info-pair"><span class="label">Address:</span> {{
-                            user_profile.address|default("[Company Address]") }}</p>
-                        {% if user_profile.email %}<p class="info-pair"><span class="label">Email:</span> {{
-                            user_info.email }}</p>{% endif %}
-                        <p class="info-pair"><span class="label">Phone:</span> {{
-                            user_info.phone_number|default("[Company Phone]") }}</p>
-                        {# Add website etc. if available on user_profile #}
-                        {% if user_profile.website %}<p class="info-pair"><span class="label">Website:</span> {{
-                            user_profile.website }}</p>{% endif %}
-                    </div>
-                </div>
-                {# Add project description if needed #}
-                {# Assuming 'description' is passed in context_data from ProjectSerializer #}
-                {% if description %}
-                <div style="margin-top: 15px;">
-                    <span class="label" style="min-width: auto;">Description:</span>
-                    <p>{{ description|default("No description provided.")|replace("
-                        ", "<br>")|safe }}</p> {# Use linebreaksbr filter #}
-                </div>
+    <!-- Header Section -->
+    <table class="header-table">
+        <tr>
+            <td style="vertical-align: middle;">
+                {% if logo_url %}
+                    <img src="{{ logo_url }}" alt="Company Logo" style="max-height: 65px; margin-bottom: 8px;">
+                {% elif user_profile.company_name %}
+                    <div class="company-title">{{ user_profile.company_name }}</div>
+                {% elif user_profile.representative_name %}
+                    <div class="company-title">{{ user_profile.representative_name }} Ventures</div>
+                {% elif customer_name %}
+                    <div class="company-title">{{ customer_name }} Ventures</div>
+                {% else %}
+                    <div class="company-title">[ Your Business Name ]</div>
                 {% endif %}
-            </div> {# End section-content #}
+                <div class="powered-tag">Powered by TileNet Estimate Vision</div>
+            </td>
+            <td style="vertical-align: middle; text-align: right;">
+                <div class="doc-title">Estimate</div>
+                <div class="meta-text"><b>Estimate No:</b> {{ estimate_number|default("EST-0001") }}</div>
+                <div class="meta-text"><b>Date:</b> {{ project_date|default("2026-05-13") }}</div>
+                <div class="meta-text"><b>Project:</b> {{ project_name|default("Tiling Estimate") }}</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Bill To & From Section -->
+    <table class="section-table">
+        <tr>
+            <!-- Bill To -->
+            <td class="info-cell">
+                <div class="box-title">Bill To</div>
+                <div class="info-line"><span class="info-label">Name:</span> {{ customer_name|default("[Client Name]") }}</div>
+                <div class="info-line"><span class="info-label">Location:</span> {{ location|default("[Client Location]") }}</div>
+                <div class="info-line"><span class="info-label">Phone:</span> {{ contact|default("[Client Contact]") }}</div>
+            </td>
+            <td class="spacer-cell"></td>
+            <!-- From -->
+            <td class="info-cell">
+                <div class="box-title">From</div>
+                <div class="info-line"><span class="info-label">Company:</span> {{ user_profile.company_name|default("[Company Name]") }}</div>
+                <div class="info-line"><span class="info-label">Address:</span> {{ user_profile.address|default("[Company Address]") }}</div>
+                {% if user_info.email and user_info.email != 'N/A' %}
+                    <div class="info-line"><span class="info-label">Email:</span> {{ user_info.email }}</div>
+                {% endif %}
+                <div class="info-line"><span class="info-label">Phone:</span> {{ user_info.phone_number|default("[Company Phone]") }}</div>
+                {% if user_profile.website %}
+                    <div class="info-line"><span class="info-label">Website:</span> {{ user_profile.website }}</div>
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+
+    <!-- Description (If Provided) -->
+    {% if description %}
+        <div class="desc-box">
+            <div class="desc-title">Project Scope & Notes</div>
+            <div>{{ description|default("No description provided.")|replace("\n", "<br>")|safe }}</div>
+        </div>
+    {% endif %}
+
+    <!-- Custom Extraction Tables (Image to PDF) or Standard Tables -->
+    {% if custom_tables %}
+        {% for table in custom_tables %}
+            <div class="table-container">
+                <div class="box-title">{{ table.table_title }}</div>
+                <table class="grid-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">No.</th>
+                            <th>Description</th>
+                            <th style="width: 80px; text-align: center;">Qty</th>
+                            <th style="width: 80px; text-align: center;">Unit</th>
+                            <th style="width: 120px; text-align: right;">Rate (GHS)</th>
+                            <th style="width: 130px; text-align: right;">Total Price (GHS)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in table["items"] %}
+                        <tr>
+                            <td style="text-align: center;">{{ loop.index }}</td>
+                            <td>{{ item.name|default("[Item Name]") }}</td>
+                            <td style="text-align: center;">{{ item.quantity|default(0) }}</td>
+                            <td style="text-align: center;">{{ item.unit|default("pcs") }}</td>
+                            <td style="text-align: right;">{{ item.unit_price|default(0)|format_currency }}</td>
+                            <td style="text-align: right;">{{ item.total_price|default(0)|format_currency }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="5" style="text-align: right;">Subtotal:</td>
+                            <td style="text-align: right;">GHS {{ table.subtotal|default(0)|format_currency }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        {% endfor %}
+    {% else %}
+        <!-- Standard Room Breakdown -->
+        <div class="table-container">
+            <div class="box-title">Room Measurements Breakdown</div>
+            {% if rooms %}
+                <table class="grid-table">
+                    <thead>
+                        <tr>
+                            <th>Room Name</th>
+                            <th style="width: 150px; text-align: right;">Floor Area (m²)</th>
+                            <th style="width: 150px; text-align: right;">Wall Area (m²)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for room in rooms %}
+                        <tr>
+                            <td>{{ room.name|default("[Room Name]") }}</td>
+                            <td style="text-align: right;">{{ room.floor_area_with_waste|default(0)|round(2) }}</td>
+                            <td style="text-align: right;">{{ room.wall_area_with_waste|default(0)|round(2) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2" style="text-align: right;">Total Area for Estimation:</td>
+                            <td style="text-align: right;">{{ total_area|default(0)|round(2) }} m²</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            {% else %}
+                <p>No room details available for this project.</p>
+            {% endif %}
         </div>
 
-        {% if custom_tables %}
-            {% for table in custom_tables %}
-            <div class="section details-section">
-                <div class="section-content">
-                    <h2>{{ table.table_title }}</h2>
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th style="width: 80px;">No.</th>
-                                <th>Description</th>
-                                <th style="width: 100px; text-align: center;">Qty</th>
-                                <th style="width: 100px; text-align: center;">Unit</th>
-                                <th style="width: 140px; text-align: right;">Rate (GH₵)</th>
-                                <th style="width: 140px; text-align: right;">Total Price (GH₵)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in table["items"] %}
-                            <tr>
-                                <td>{{ loop.index }}</td>
-                                <td>{{ item.name|default("[Item Name]") }}</td>
-                                <td style="text-align: center;">{{ item.quantity|default(0) }}</td>
-                                <td style="text-align: center;">{{ item.unit|default("pcs") }}</td>
-                                <td style="text-align: right;">{{ item.unit_price|default(0)|format_currency }}</td>
-                                <td style="text-align: right;">{{ item.total_price|default(0)|format_currency }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="5" style="text-align: right; font-weight: bold;">Subtotal:</td>
-                                <td style="text-align: right; font-weight: bold;">GH₵{{ table.subtotal|default(0)|format_currency }}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
-            {% endfor %}
-        {% else %}
-            <div class="section details-section">
-                <div class="section-content"> {# Added inner content wrapper #}
-                    <h2>Room Measurements</h2>
-                    {# The 'rooms' variable is a list of serialized Room objects #}
-                    {% if rooms %}
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Room Name</th>
-                                {# Removed Type, Length, Breadth, Height columns #}
-                                <th>Floor Area (m²)</th>
-                                <th>Wall Area (m²)</th>
-                                {# Removed Total Area column from room breakdown as it's less relevant to customer #}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for room in rooms %}
-                            <tr>
-                                {# room_type is the slug, assuming you want the slug. If display name is needed, you might
-                                need to add it to the serializer #}
-                                <td>{{ room.name|default("[Room Name]") }}</td> {# Display room name #}
-                                {# Removed Type, Length, Breadth, Height cells #}
-                                {# Use calculated fields from Room object, ensure they are Decimal in backend and formatted
-                                here #}
-                                <td>{{ room.floor_area_with_waste|default(0)|round(2) }}</td>
-                                <td>{{ room.wall_area_with_waste|default(0)|round(2) }}</td>
-                            </tr>
-
-                            {% endfor %}
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                {# total_area from Project model represents the sum for estimation #}
-                                <td colspan="2" style="text-align: right;">Total Area for Estimation:</td> {# Adjusted
-                                colspan #}
-                                <td>{{ total_area|default(0)|round(2) }} m²</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                    {% else %}
-                    <p>No room details available for this project.</p>
-                    {% endif %}
-                </div> {# End section-content #}
-            </div>
-
-            <div class="section details-section">
-                <div class="section-content"> {# Added inner content wrapper #}
-                    <h2>Materials Summary</h2>
-                    {# The 'materials' variable is a list of serialized ProjectMaterial objects #}
-                    {% if materials %}
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th style="width: 80px;">Item</th>
-                                <th>Name</th>
-                                <th style="width: 120px;">Quantity Needed</th>
-                                <th style="width: 100px;">Unit</th>
-                                <th style="width: 140px; text-align: right;">Unit Price (GH₵)</th>
-                                <th style="width: 140px; text-align: right;">Total Price (GH₵)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in materials %}
-                            <tr>
-                                <td>{{ loop.index }}</td>
-                                <td>{{ item.name|default("[Material Name]") }}</td>
-                                <td>{{ item.quantity|default(0)|round(2) }}</td>
-                                <td>{{ item.unit|default("N/A") }}</td>
-                                <td style="text-align: right;">{{ item.price|default(0)|format_currency }}</td>
-                                <td style="text-align: right;">{{ (item.price|default(0) *
-                                    item.quantity|default(0))|format_currency }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="5" style="text-align: right; font-weight: bold;">Total Material Cost:</td>
-                                <td style="text-align: right; font-weight: bold;">GH₵{{
-                                    total_material_cost|default(0)|format_currency }}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                    {% else %}
-                    <p>No materials added to this project.</p>
-                    {% endif %}
-                </div> {# End section-content #}
-            </div>
-        {% endif %}
-
-
-        <div class="section summary-section">
-            <div class="section-content"> {# Added inner content wrapper #}
-                <h2>Estimate Summary</h2>
-                <div class="summary-totals">
-                     <div class="summary-row">
-                          <span class="summary-label">Total Material Cost:</span>
-                          <span class="summary-value">GH₵{{ total_material_cost|default(0)|format_currency }}</span>
-                     </div>
-                     <div class="summary-row">
-                          <span class="summary-label">Total Labour Cost:</span>
-                          <span class="summary-value">GH₵{{ total_labor_cost|default(0)|format_currency }}</span>
-                     </div>
-                     
-                     {# Display transport cost if greater than 0 #}
-                     {% if transport and transport > 0 %}
-                          <div class="summary-row">
-                              <span class="summary-label">Transport Cost:</span>
-                              <span class="summary-value">GH₵{{ transport|default(0)|format_currency }}</span>
-                          </div>
-                     {% endif %}
-
-                     {# GRAND TOTAL #}
-                     <div class="summary-row grand-total-row">
-                          <span class="summary-label">Grand Total Estimate:</span>
-                          <span class="summary-value">GH₵{{ grand_total|default(0)|format_currency }}</span>
-                     </div>
-                 </div>
-
-                {# Other Summary Info like Estimated Days, Cost Per Area #}
-                <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid var(--secondary-color);">
-                    <p class="info-pair"><span class="label">Estimated Days:</span> {{ estimated_days|default(0) }}</p>
-
-                    {% if total_area and total_area > 0 %}
-                    <p class="info-pair"><span class="label">Total Area Calculated:</span> {{
-                        total_area|default(0)|round(2) }}m²</p>
-                    {% endif %}
-                </div>
-
-            </div> {# End section-content #}
+        <!-- Materials Breakdown -->
+        <div class="table-container">
+            <div class="box-title">Materials Summary</div>
+            {% if materials %}
+                <table class="grid-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">No.</th>
+                            <th>Material Name</th>
+                            <th style="width: 100px; text-align: center;">Quantity</th>
+                            <th style="width: 80px; text-align: center;">Unit</th>
+                            <th style="width: 120px; text-align: right;">Unit Price (GHS)</th>
+                            <th style="width: 130px; text-align: right;">Total Price (GHS)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in materials %}
+                        <tr>
+                            <td style="text-align: center;">{{ loop.index }}</td>
+                            <td>{{ item.name|default("[Material Name]") }}</td>
+                            <td style="text-align: center;">{{ item.quantity|default(0)|round(2) }}</td>
+                            <td style="text-align: center;">{{ item.unit|default("N/A") }}</td>
+                            <td style="text-align: right;">{{ item.price|default(0)|format_currency }}</td>
+                            <td style="text-align: right;">{{ (item.price|default(0) * item.quantity|default(0))|format_currency }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="5" style="text-align: right;">Total Material Cost:</td>
+                            <td style="text-align: right;">GHS {{ total_material_cost|default(0)|format_currency }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            {% else %}
+                <p>No materials added to this project.</p>
+            {% endif %}
         </div>
+    {% endif %}
 
-
-        <div class="section signature-section">
-            <div class="signature-box">
-                <span class="signature-line"></span>
-                <span>Customer Name (Signature)</span>
-            </div>
-            <div class="signature-box">
-                <span class="signature-line"></span>
-                {# Assuming user_profile has a representative name field or use company name #}
-                <span>{{ user_profile.representative_name|default(user_profile.company_name)|default("Representative
-                    Name") }} (Signature)</span>
-            </div>
+    <!-- Final Estimate Summary Box -->
+    <div class="summary-box">
+        <div class="box-title" style="border-bottom: 2px solid #bee3f8; color: #2b6cb0;">Estimate Financial Summary</div>
+        <table class="summary-table">
+            <tr>
+                <td><b>Total Material Cost:</b></td>
+                <td style="text-align: right;">GHS {{ total_material_cost|default(0)|format_currency }}</td>
+            </tr>
+            <tr>
+                <td><b>Total Labour / Installation Cost:</b></td>
+                <td style="text-align: right;">GHS {{ total_labor_cost|default(0)|format_currency }}</td>
+            </tr>
+            {% if transport and transport > 0 %}
+                <tr>
+                    <td><b>Transport Cost:</b></td>
+                    <td style="text-align: right;">GHS {{ transport|default(0)|format_currency }}</td>
+                </tr>
+            {% endif %}
+            <tr>
+                <td class="grand-total">Grand Total Estimate:</td>
+                <td class="grand-total" style="text-align: right;">GHS {{ grand_total|default(0)|format_currency }}</td>
+            </tr>
+        </table>
+        <div style="margin-top: 15px; padding-top: 12px; border-top: 1px solid #bee3f8; font-size: 10pt; color: #4a5568;">
+            <b>Estimated Duration:</b> {{ estimated_days|default(3) }} Days 
+            {% if total_area and total_area > 0 %}
+                &nbsp;|&nbsp; <b>Calculated Area:</b> {{ total_area|default(0)|round(2) }} m²
+            {% endif %}
         </div>
-
-        <div class="section terms">
-            <div class="section-content"> {# Added inner content wrapper #}
-                <h4>Terms and Conditions</h4>
-                {# Add validity_days to context or settings, or use a default #}
-                <p>1. This estimate is valid for {{ validity_days|default(30) }} days from the issue date.</p>
-                <p>2. Any work requested outside the scope of this estimate will be billed separately.</p>
-                <p>3. Payment terms are as specified in the payment section. Timely payment is appreciated.</p>
-            </div> {# End section-content #}
-            <div
-                style="text-align: center; margin-top: 15px; font-size: 10px; color: #ffffff; background-color: rgb(65, 65, 250);">
-                Powered by TileNet
-            </div>
-        </div>
-
-        <div class="footer-section">
-            &copy; {{ project_date|default("") }} {{ user_profile.company_name|default("Your Company") }}. All rights
-            reserved.
-        </div>
-
     </div>
-</body>
 
+    <!-- Signatures -->
+    <table class="signature-table">
+        <tr>
+            <td class="sig-box">
+                <div class="sig-line">Customer Signature</div>
+            </td>
+            <td class="sig-box">
+                <div class="sig-line">{{ user_profile.representative_name|default(user_profile.company_name)|default("Authorized Contractor") }} Signature</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Terms & Conditions -->
+    <div class="terms-box">
+        <div class="terms-title">Terms and Conditions</div>
+        <p>1. This estimate is valid for {{ validity_days|default(30) }} days from the issue date.</p>
+        <p>2. Any additional work or scope adjustments requested outside this estimate will be billed separately.</p>
+        <p>3. Timely payment according to agreed billing milestones is highly appreciated.</p>
+    </div>
+
+    <!-- Footer Bar -->
+    <div class="footer-bar">
+        &copy; {{ project_date|default("") }} {{ user_profile.company_name|default("TileNet Professional Solutions") }}. All rights reserved.
+    </div>
+
+</body>
 </html>
