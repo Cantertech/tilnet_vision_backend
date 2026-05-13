@@ -335,11 +335,16 @@ async def generate_pdf(payload: dict):
             print(f"WeasyPrint failed or missing system libraries in this environment: {weasy_err}")
             print("Falling back to pure-Python xhtml2pdf...")
             from xhtml2pdf import pisa
+            
+            # Preprocess HTML for xhtml2pdf compatibility (resolve CSS variables)
+            primary_col = context.get("primary_color") or "#007bff"
+            clean_html = html_content.replace("var(--primary-color)", primary_col).replace("var(--secondary-color)", "#e9ecef")
+            
             pdf_buffer = io.BytesIO()
-            pisa_status = pisa.CreatePDF(io.StringIO(html_content), dest=pdf_buffer)
-            if pisa_status.err:
-                raise Exception(f"PDF compilation failed on both WeasyPrint and xhtml2pdf fallback. WeasyPrint error: {weasy_err}")
+            pisa.CreatePDF(clean_html, dest=pdf_buffer)
             pdf_bytes = pdf_buffer.getvalue()
+            if not pdf_bytes:
+                raise Exception(f"PDF compilation failed on both WeasyPrint and xhtml2pdf fallback. WeasyPrint error: {weasy_err}")
 
         # Convert to Base64
         pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
