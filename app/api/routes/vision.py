@@ -6,6 +6,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from jinja2 import Environment, FileSystemLoader
 from xhtml2pdf import pisa
 from app.agents.vision_agent import vision_graph
+from app.agents.document_agent import document_graph
 from app.core.supabase import supabase, supabase_admin
 
 router = APIRouter()
@@ -99,6 +100,64 @@ async def process_estimate(
         print(f"Error in process_estimate: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.post("/extract-document")
+async def extract_document(
+    user_id: str,
+    file: UploadFile = File(...)
+):
+    """
+    Dedicated Document Extractor Agent that extracts structured construction estimates 
+    exactly as they are from any uploaded sketch, receipt, or document using the 
+    LangGraph Document Extraction Flow.
+    """
+    print(f"\n[API] Document Extraction Request: user_id={user_id}")
+    try:
+        # 1. Store file in Supabase Storage
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        file_path = f"{user_id}/docs/{timestamp}_{file.filename}"
+        file_content = await file.read()
+        print(f"[API] Uploading doc image to storage: {file_path}...")
+        
+        # Upload using Admin client with upsert enabled
+        supabase_admin.storage.from_("scans").upload(
+            path=file_path,
+            file=file_content,
+            file_options={"content-type": file.content_type, "upsert": "true"}
+        )
+        
+        # Get Public URL
+        image_url = supabase_admin.storage.from_("scans").get_public_url(file_path)
+        print(f"[API] Doc Image live at: {image_url}")
+        
+        # 2. Setup and Invoke Document LangGraph Agent Flow
+        initial_state = {
+            "image_url": image_url,
+            "user_id": user_id,
+            "raw_json_text": "",
+            "extracted_data": None,
+            "status": "idle",
+            "errors": []
+        }
+        
+        print(f"[API] Invoking Document Extractor Agent Graph...")
+        start_time = datetime.now()
+        final_state = document_graph.invoke(initial_state)
+        duration = (datetime.now() - start_time).total_seconds()
+        print(f"[API] Doc Agent Processing Finished in {duration:.2f}s. Status: {final_state.get('status', 'unknown')}")
+        
+        if final_state.get("status") == "failed" or not final_state.get("extracted_data"):
+            raise HTTPException(status_code=500, detail=f"Document extraction failed: {', '.join(final_state.get('errors', []))}")
+            
+        return {
+            "success": True,
+            "data": final_state.get("extracted_data")
+        }
+    except Exception as e:
+        print(f"Error in extract_document: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/generate-pdf")
 async def generate_pdf(payload: dict):
     project_id = payload.get("project_id")
@@ -107,14 +166,41 @@ async def generate_pdf(payload: dict):
         raise HTTPException(status_code=400, detail="Valid Project ID is required")
 
     try:
-        # 1. Fetch Project Data from Supabase
-        print(f"[PDF] Attempting to fetch project {project_id} (Type: {type(project_id)})")
-        
         # Clean the ID if it's a string
         if isinstance(project_id, str):
             project_id = project_id.strip()
 
-        # Execute query without .single() to avoid PGRST116
+        # --- Apply updates from payload and save to database first ---
+        update_payload = {}
+        customer_name_payload = payload.get("customer_name")
+        contact_payload = payload.get("customer_phone") or payload.get("contact")
+        location_payload = payload.get("customer_location") or payload.get("Location") or payload.get("location")
+        transport_payload = payload.get("transport")
+        cost_per_area_payload = payload.get("cost_per_area")
+
+        if customer_name_payload is not None:
+            update_payload["customer_name"] = customer_name_payload
+        if contact_payload is not None:
+            update_payload["customer_phone"] = contact_payload
+        if location_payload is not None:
+            update_payload["customer_location"] = location_payload
+        if transport_payload is not None:
+            try:
+                update_payload["transport"] = float(transport_payload)
+            except (ValueError, TypeError):
+                pass
+        if cost_per_area_payload is not None:
+            try:
+                update_payload["cost_per_area"] = float(cost_per_area_payload)
+            except (ValueError, TypeError):
+                pass
+
+        if update_payload:
+            print(f"[PDF] Applying database pre-updates: {update_payload}")
+            supabase_admin.table("projects").update(update_payload).eq("id", project_id).execute()
+
+        # 1. Fetch Project Data from Supabase
+        print(f"[PDF] Fetching project {project_id}...")
         response = supabase_admin.table("projects").select("*").eq("id", project_id).execute()
         
         if not response.data or len(response.data) == 0:
@@ -143,7 +229,6 @@ async def generate_pdf(payload: dict):
         wastage_factor = 1 + (float(project.get("wastage_percentage") or 10) / 100)
         
         # Calculate floor_area_with_waste and wall_area_with_waste for each room
-        # Since they might not be in the DB, we calculate them here for the PDF
         for room in rooms:
             # Floor area
             base_floor = float(room.get("area") or room.get("floor_area") or 0)
@@ -155,28 +240,53 @@ async def generate_pdf(payload: dict):
             # Wall area
             base_wall = float(room.get("wall_area") or 0)
             if base_wall == 0 and room.get("length") and room.get("breadth") and room.get("height"):
-                # Perimeter * Height (approx)
                 base_wall = 2 * (float(room.get("length")) + float(room.get("breadth"))) * float(room.get("height"))
             
             room["wall_area_with_waste"] = base_wall * wastage_factor
 
-        # Calculate totals
-        total_material_cost = sum(float(m.get("price") or 0) * float(m.get("quantity") or 0) for m in materials)
-        total_labor_cost = float(project.get("total_labor_cost") or 0)
-        transport = float(project.get("transport") or 0)
-        profit = float(project.get("profit") or 0)
-        grand_total = total_material_cost + total_labor_cost + transport + profit
-        total_area = float(project.get("total_area_with_waste") or 0)
+        # Check if we have custom extracted tables from Image to PDF wizard
+        custom_doc = payload.get("custom_doc")
+        custom_tables = None
         
+        if custom_doc:
+            print("[PDF] Custom Doc found in payload. Overriding fields for Image-To-PDF rendering.")
+            custom_tables = custom_doc.get("tables", [])
+            customer_name = custom_doc.get("customer_name") or project.get("customer_name") or "N/A"
+            location = custom_doc.get("subtitle") or project.get("customer_location") or "N/A"
+            contact = custom_doc.get("customer_phone") or project.get("customer_phone") or "N/A"
+            total_material_cost = float(custom_doc.get("summary", {}).get("total_material_cost") or 0)
+            total_labor_cost = float(custom_doc.get("summary", {}).get("total_labor_cost") or 0)
+            transport = float(custom_doc.get("summary", {}).get("transport") or 0)
+            profit = 0.0
+            grand_total = float(custom_doc.get("summary", {}).get("grand_total") or 0)
+            description = custom_doc.get("summary", {}).get("notes") or ""
+            rooms = []
+            materials = []
+            total_area = 0.0
+        else:
+            customer_name = project.get("customer_name") or "N/A"
+            location = project.get("customer_location") or project.get("location") or "N/A"
+            contact = project.get("customer_phone") or "N/A"
+            total_material_cost = sum(float(m.get("price") or 0) * float(m.get("quantity") or 0) for m in materials)
+            total_labor_cost_raw = float(project.get("total_labor_cost") or 0)
+            transport = float(project.get("transport") or 0)
+            profit_raw = float(project.get("profit") or 0)
+            total_labor_cost = total_labor_cost_raw + profit_raw
+            profit = 0.0
+            grand_total = total_material_cost + total_labor_cost + transport + profit
+            total_area = float(project.get("total_area_with_waste") or 0)
+            description = project.get("description", "")
+
         context = {
             "project_name": project.get("name"),
             "estimate_number": project.get("estimate_number", f"EST-{str(project_id)[:6]}"),
             "project_date": project.get("created_at")[:10] if project.get("created_at") else datetime.now().strftime("%Y-%m-%d"),
-            "customer_name": project.get("customer_name", "N/A"),
-            "location": project.get("customer_location") or project.get("location") or "N/A",
-            "contact": project.get("customer_phone", "N/A"),
+            "customer_name": customer_name,
+            "location": location,
+            "contact": contact,
             "rooms": rooms,
             "materials": materials,
+            "custom_tables": custom_tables,
             "total_material_cost": total_material_cost,
             "total_labor_cost": total_labor_cost,
             "transport": transport,
@@ -191,10 +301,10 @@ async def generate_pdf(payload: dict):
                 "phone_number": profile.get("phone_number", "0502560760"),
                 "email": profile.get("email", "N/A")
             },
-            "description": project.get("description", "")
+            "description": description
         }
 
-        # 4. Render and Generate PDF using WeasyPrint (Matches user's previous project)
+        # 4. Render and Generate PDF using WeasyPrint
         import io
         import base64
         from jinja2 import Environment, FileSystemLoader
@@ -203,6 +313,15 @@ async def generate_pdf(payload: dict):
 
         template_path = os.path.join(os.getcwd(), "app", "templates")
         jinja_env = Environment(loader=FileSystemLoader(template_path))
+        
+        # Register custom filters
+        def format_currency(value):
+            try:
+                return f"{float(value or 0):,.2f}"
+            except (ValueError, TypeError):
+                return value
+        jinja_env.filters['format_currency'] = format_currency
+        
         template = jinja_env.get_template("pdf_template.html")
         html_content = template.render(context)
 
@@ -223,6 +342,7 @@ async def generate_pdf(payload: dict):
         error_msg = f"PDF Error: {str(e)}\n{traceback.format_exc()}"
         print(error_msg)
         raise HTTPException(status_code=500, detail=error_msg)
+
 
 @router.post("/save-project")
 async def save_project(payload: dict):
